@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}OCR & Intelligent Text Engine — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">OCR & Intelligent Element Recognition</h1>
+    <p class="page-subtitle">Text extraction and label-based element localization using Tesseract with OpenCV contour fallback.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <button id="btnCaptureForOcr" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Capture Screen for OCR</span>
+    </button>
+  </div>
+</div>
+
+<!-- OCR Availability Status Banner -->
+<div class="card" style="margin-bottom:1.5rem;background:var(--bg-surface-elevated)">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.6rem;font-weight:700;font-size:1.05rem;margin-bottom:0.35rem">
+        {% if ocr_status.available %}
+          <span class="badge badge-success"><span class="badge-dot"></span> Tesseract Engine Active</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)">Version: {{ ocr_status.version }}</span>
+        {% else %}
+          <span class="badge badge-warning"><span class="badge-dot"></span> Tesseract Binary Offline</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)">Contour-based computer vision heuristic fallback active</span>
+        {% endif %}
+      </div>
+      <p style="font-size:0.88rem;color:var(--text-secondary);margin-top:0.4rem">
+        {{ ocr_status.installation_guide }}
+      </p>
+    </div>
+    {% if not ocr_status.available %}
+    <div style="flex-shrink:0">
+      <span class="badge badge-info">Windows Setup Available</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:360px 1fr;gap:1.5rem">
+  <!-- Left Side OCR Controls -->
+  <div style="display:flex;flex-direction:column;gap:1.25rem">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Search UI by Visible Text</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Target Button or Label Text</label>
+        <input type="text" id="ocrLabelSearchInput" class="form-control" value="Save Employee" placeholder="e.g. Save Employee, Clear Fields">
+      </div>
+
+      <div style="display:flex;gap:0.75rem;margin-top:1rem">
+        <button id="btnSearchLabel" class="btn btn-primary" style="flex:1">
+          Find Element
+        </button>
+        <button id="btnRunOcr" class="btn btn-secondary" style="flex:1">
+          Extract All Text
+        </button>
+      </div>
+    </div>
+
+    <!-- OCR vs Template Matching Comparison Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Technique Comparison</div>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:0.75rem">
+        <div>
+          <strong style="color:var(--accent-violet)">OpenCV Template Matching:</strong>
+          <div>Fast, pixel-accurate, insensitive to font rendering differences when template matches screen resolution. Primary method.</div>
+        </div>
+        <div>
+          <strong style="color:var(--accent-cyan)">OCR Label Search:</strong>
+          <div>Flexible to button restyling, themes, and size changes. Pinpoints text regardless of background color.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side Preview & Text Results -->
+  <div style="display:flex;flex-direction:column;gap:1.5rem">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Target Screenshot Preview</div>
+      </div>
+      <div style="background:var(--bg-primary);border-radius:var(--radius-md);border:1px solid var(--border-subtle);min-height:240px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <img id="ocrPreviewImg" src="/api/images/screenshots/desktop.png" alt="Desktop Screenshot" style="max-width:100%;max-height:350px;object-fit:contain" onerror="this.src='/api/images/results/automation_result.png'">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recognition Output</div>
+      </div>
+      <div id="ocrResultContent" style="color:var(--text-secondary);font-size:0.88rem">
+        Click <strong>"Find Element"</strong> or <strong>"Extract All Text"</strong> to process the screenshot.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ocr_lab.js"></script>
+{% endblock %}

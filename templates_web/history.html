@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Execution History & Telemetry — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Execution History & Reports</h1>
+    <p class="page-subtitle">Historical audit trail of all automated workflows, detection confidences, durations, and diagnostic traces.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <a href="/api/executions?limit=500" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span>Export History JSON</span>
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Execution ID</th>
+          <th>Workflow</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Steps</th>
+          <th>Confidence</th>
+          <th>Timestamp</th>
+          <th style="text-align:right">Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if runs %}
+          {% for r in runs %}
+          <tr>
+            <td>
+              <a href="/history/{{ r.id }}" style="color:var(--accent-cyan);text-decoration:none;font-weight:600">
+                {{ r.id }}
+              </a>
+            </td>
+            <td><strong>{{ r.workflow_name }}</strong></td>
+            <td>
+              {% if r.status == 'SUCCESS' %}
+                <span class="badge badge-success"><span class="badge-dot"></span> SUCCESS</span>
+              {% elif r.status == 'FAILED' %}
+                <span class="badge badge-danger"><span class="badge-dot"></span> FAILED</span>
+              {% elif r.status == 'CANCELLED' %}
+                <span class="badge badge-warning"><span class="badge-dot"></span> CANCELLED</span>
+              {% else %}
+                <span class="badge badge-info"><span class="badge-dot"></span> {{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ r.duration_seconds or 0 }}s</td>
+            <td>{{ r.completed_steps or 0 }} / {{ r.step_count or 0 }}</td>
+            <td>
+              {% if r.max_confidence %}
+                <span style="color:var(--status-success);font-weight:600">{{ (r.max_confidence * 100)|round(1) }}%</span>
+              {% else %}
+                <span style="color:var(--text-muted)">N/A</span>
+              {% endif %}
+            </td>
+            <td style="font-size:0.8rem;color:var(--text-muted)">{{ r.start_time[:19].replace('T', ' ') }}</td>
+            <td style="text-align:right">
+              <a href="/history/{{ r.id }}" class="btn btn-secondary" style="padding:0.3rem 0.65rem;font-size:0.75rem">
+                Inspect Run
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-muted)">
+              No historical execution runs recorded. Start an execution from the Control Center.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

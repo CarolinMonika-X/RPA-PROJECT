@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Settings & System Diagnostics — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Settings & System Health</h1>
+    <p class="page-subtitle">Platform configuration, vision thresholds, process safety guards, and environment diagnostics.</p>
+  </div>
+  <div>
+    <button id="btnSaveAllSettings" class="btn btn-primary" onclick="saveSettings()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
+      <span>Save Preferences</span>
+    </button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+  <!-- System Diagnostics Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Environment Diagnostics
+      </div>
+      <span class="badge badge-success"><span class="badge-dot"></span> System Healthy</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:0.75rem;font-size:0.88rem">
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">Python Runtime:</span>
+        <strong style="color:var(--text-primary)">Python {{ diagnostics.python_version }}</strong>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">OpenCV Engine:</span>
+        <strong style="color:var(--accent-violet)">OpenCV {{ diagnostics.opencv_version }}</strong>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">Operating System:</span>
+        <strong style="color:var(--text-primary)">{{ diagnostics.platform }}</strong>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">Display Resolution:</span>
+        <strong style="color:var(--accent-cyan)">{{ diagnostics.screen_resolution }}</strong>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">PyAutoGUI Failsafe:</span>
+        <strong style="color:var(--status-success)">{{ diagnostics.pyautogui_failsafe }} (Corner Stop Active)</strong>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">OCR Tesseract Engine:</span>
+        <span class="badge {% if diagnostics.ocr_status.available %}badge-success{% else %}badge-warning{% endif %}">
+          {% if diagnostics.ocr_status.available %}Online{% else %}Optional (Fallback Active){% endif %}
+        </span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:var(--bg-primary);border-radius:var(--radius-md)">
+        <span style="color:var(--text-muted)">CSV Persistence:</span>
+        <strong style="color:var(--status-success)">Writable ({{ diagnostics.csv_path|truncate(35) }})</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Runtime Settings & Thresholds -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Automation Thresholds & Policies</div>
+    </div>
+
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+        <label class="form-label" style="margin-bottom:0">Default Confidence Threshold</label>
+        <span id="labelSettingThresh" style="color:var(--accent-cyan);font-weight:600">{{ (settings.confidence_threshold * 100)|int }}%</span>
+      </div>
+      <input type="range" id="settingThresh" min="0.50" max="0.99" step="0.01" value="{{ settings.confidence_threshold }}" class="form-control" oninput="document.getElementById('labelSettingThresh').textContent=Math.round(this.value*100)+'%'">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Step Execution Timeout (seconds)</label>
+      <input type="number" id="settingTimeout" class="form-control" value="{{ settings.timeout_seconds }}" min="5" max="300">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">PyAutoGUI Key Delay (seconds)</label>
+      <input type="number" id="settingPause" class="form-control" value="{{ settings.pyautogui_pause }}" step="0.05" min="0.1" max="2.0">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Maximum Step Retry Count</label>
+      <input type="number" id="settingRetries" class="form-control" value="{{ settings.max_retries }}" min="1" max="5">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Screenshot Retention Window (Days)</label>
+      <input type="number" id="settingRetention" class="form-control" value="{{ settings.screenshot_retention_days }}" min="1" max="90">
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveSettings() {
+  const payload = {
+    confidence_threshold: parseFloat(document.getElementById("settingThresh").value),
+    timeout_seconds: parseInt(document.getElementById("settingTimeout").value, 10),
+    pyautogui_pause: parseFloat(document.getElementById("settingPause").value),
+    max_retries: parseInt(document.getElementById("settingRetries").value, 10),
+    screenshot_retention_days: parseInt(document.getElementById("settingRetention").value, 10)
+  };
+
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      App.toast("Settings saved successfully.", "success");
+    } else {
+      App.toast("Failed to save settings.", "danger");
+    }
+  } catch (e) {
+    App.toast(`Settings error: ${e}`, "danger");
+  }
+}
+</script>
+{% endblock %}

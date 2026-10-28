@@ -1,5 +1,7 @@
-
 opencv-python
 pyautogui
 pillow
 pytesseract
+pygetwindow
+flask
+pytest

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Visual Workflow Builder — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Visual Workflow Builder</h1>
+    <p class="page-subtitle">Configure, reorder, and validate automation sequences with OpenCV recognition and keyboard/mouse actions.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <button id="btnNewWorkflow" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Create New</span>
+    </button>
+    <button id="btnDryRunWorkflow" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      <span>Dry-Run Test</span>
+    </button>
+    <button id="btnSaveWorkflow" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
+      <span>Save Workflow</span>
+    </button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:320px 1fr;gap:1.5rem">
+  <!-- Left Panel: Select & Metadata -->
+  <div style="display:flex;flex-direction:column;gap:1.25rem">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Workflow Profile</div>
+        <span id="wfVersionBadge" class="badge badge-info">Schema v2.0</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Workflow</label>
+        <select id="builderWfSelect" class="form-control">
+          {% for w in workflows %}
+          <option value="{{ w.id }}">{{ w.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Workflow Name</label>
+        <input type="text" id="wfNameInput" class="form-control" placeholder="Workflow name">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="wfDescInput" class="form-control" rows="3" placeholder="Purpose and behavior of this workflow"></textarea>
+      </div>
+
+      <div style="display:flex;gap:0.5rem;margin-top:1rem">
+        <button id="btnExportWfJson" class="btn btn-secondary" style="flex:1;font-size:0.8rem">
+          Export JSON
+        </button>
+      </div>
+    </div>
+
+    <!-- Supported Step Reference -->
+    <div class="card" style="background:var(--bg-surface-elevated)">
+      <div style="font-weight:600;font-size:0.85rem;color:var(--accent-cyan);margin-bottom:0.5rem">
+        Step Catalog
+      </div>
+      <div style="font-size:0.8rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:0.35rem">
+        <div><code>activate_window</code>: Focus app by title</div>
+        <div><code>type_text</code>: String input with delay</div>
+        <div><code>press_key</code>: Keyboard trigger (tab/enter)</div>
+        <div><code>image_detection</code>: OpenCV template match</div>
+        <div><code>request_confirmation</code>: User approval gate</div>
+        <div><code>click_detected</code>: Click element center</div>
+        <div><code>validation</code>: CSV record verification</div>
+        <div><code>ocr_detect</code>: Locate visible text</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center Panel: Visual Steps Sequence -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Sequence Steps (Execution Pipeline)</div>
+      <button id="btnAddStep" class="btn btn-secondary" style="font-size:0.8rem;padding:0.35rem 0.75rem">
+        + Add Action Step
+      </button>
+    </div>
+
+    <div id="builderStepsContainer" class="step-node-list">
+      <!-- Steps rendered dynamically via workflow_builder.js -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Step Editor -->
+<div id="stepConfigModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="card-header" style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-subtle);margin-bottom:0">
+      <div class="card-title">Configure Workflow Step</div>
+      <button class="btn-icon" data-close-modal>✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <input type="hidden" id="stepModalIndex" value="-1">
+
+      <div class="form-group">
+        <label class="form-label">Step Label</label>
+        <input type="text" id="stepModalName" class="form-control" placeholder="e.g. Type Employee ID">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Step Type</label>
+        <select id="stepModalType" class="form-control">
+          <option value="activate_window">activate_window (Target Window)</option>
+          <option value="wait">wait (Delay Milliseconds)</option>
+          <option value="type_text">type_text (Keystrokes)</option>
+          <option value="press_key">press_key (Special Key)</option>
+          <option value="screenshot">screenshot (Capture Display)</option>
+          <option value="image_detection">image_detection (OpenCV Template)</option>
+          <option value="request_confirmation">request_confirmation (User Prompt)</option>
+          <option value="click_detected">click_detected (Click Target)</option>
+          <option value="ocr_detect">ocr_detect (Text Recognition)</option>
+          <option value="validation">validation (CSV Record Check)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Parameters (JSON)</label>
+        <textarea id="stepModalParams" class="form-control" rows="5" style="font-family:monospace;font-size:0.85rem"></textarea>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem">
+        <button class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button id="btnSaveStepConfig" class="btn btn-primary">Save Step</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/workflow_builder.js"></script>
+{% endblock %}

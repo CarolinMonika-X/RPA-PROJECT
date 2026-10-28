@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Workforce Records — OmniRPA Enterprise{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Employee Data Management</h1>
+    <p class="page-subtitle">Synchronized with <code>results/employees.csv</code>. Includes automated data integrity auditing, duplicate detection, atomic file transactions, and versioned backups.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+    <button id="btnCreateBackupNow" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
+      <span>Backup Snapshot</span>
+    </button>
+    <button id="btnOpenBackupsModal" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span>Restore Backups</span>
+    </button>
+    <label class="btn btn-secondary" style="cursor:pointer;margin-bottom:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Import CSV</span>
+      <input type="file" id="csvImportFileInput" accept=".csv" style="display:none">
+    </label>
+    <button id="btnExportEmployeesCsv" class="btn btn-secondary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span>Export CSV</span>
+    </button>
+    <button id="btnOpenAddEmployeeModal" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Add Employee</span>
+    </button>
+  </div>
+</div>
+
+<!-- Data Integrity & Audit Report Banner -->
+<div id="dataIntegrityBanner" class="card" style="margin-bottom:1.5rem;background:var(--bg-surface-secondary);border:1px solid var(--border-medium);display:none">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:0.6rem;font-weight:700;font-size:1.05rem;color:var(--status-warning);margin-bottom:0.35rem">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>CSV Data Integrity Audit: <span id="auditAnomalyCount">0</span> Anomalies Detected in Historical Records</span>
+      </div>
+      <p id="auditExplanationText" style="font-size:0.86rem;color:var(--text-secondary);margin-bottom:0.75rem"></p>
+      <div id="auditAnomaliesList" style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.82rem"></div>
+    </div>
+    <div style="flex-shrink:0">
+      <button class="btn btn-secondary" onclick="document.getElementById('dataIntegrityBanner').style.display='none'">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<!-- Department Summary Cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));margin-bottom:1.5rem">
+  <div class="card stat-card" style="padding:1.15rem 1.35rem">
+    <div class="stat-label">Total Employee Records</div>
+    <div class="stat-value" style="font-size:1.85rem">{{ dept_summary.total_employees }}</div>
+  </div>
+  {% for dept, count in dept_summary.departments.items() %}
+  <div class="card stat-card" style="padding:1.15rem 1.35rem">
+    <div class="stat-label">Dept: {{ dept }}</div>
+    <div class="stat-value" style="font-size:1.85rem;color:var(--accent-ice-blue)">{{ count }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Search, Filter & Records Table -->
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap">
+    <div style="display:flex;gap:0.75rem;flex:1;max-width:480px">
+      <input type="text" id="empSearchInput" class="form-control" placeholder="Search by Employee ID, Name, or Department...">
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <select id="empDeptFilter" class="form-control" style="width:170px">
+        <option value="">All Departments</option>
+        {% for dept in dept_summary.departments.keys() %}
+        <option value="{{ dept }}">{{ dept }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Full Name</th>
+          <th>Department</th>
+          <th>Created At</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="employeeTableBody">
+        <!-- Rendered dynamically by employee_mgr.js -->
+      </tbody>
+    </table>
+  </div>
+
+  <div id="employeePagination" style="display:flex;align-items:center;justify-content:space-between;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border-subtle)"></div>
+</div>
+
+<!-- Add Employee Modal -->
+<div id="addEmployeeModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="card-header" style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-subtle);margin-bottom:0">
+      <div class="card-title">Add New Employee Record</div>
+      <button class="btn-icon" data-close-modal>✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <div class="form-group">
+        <label class="form-label">Employee ID</label>
+        <input type="text" id="addEmpId" class="form-control" placeholder="e.g. EMP005">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">Must be unique. Duplicate IDs are rejected to guarantee data integrity.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="addEmpName" class="form-control" placeholder="e.g. Alex Johnson">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <input type="text" id="addEmpDept" class="form-control" placeholder="e.g. Engineering">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem">
+        <button class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button id="btnSaveNewEmployee" class="btn btn-primary">Save to CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div id="editEmployeeModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="card-header" style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-subtle);margin-bottom:0">
+      <div class="card-title">Edit Employee Record</div>
+      <button class="btn-icon" data-close-modal>✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <div class="form-group">
+        <label class="form-label">Employee ID (Immutable Key)</label>
+        <input type="text" id="editEmpId" class="form-control" disabled style="opacity:0.7">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="editEmpName" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <input type="text" id="editEmpDept" class="form-control">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem">
+        <button class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button id="btnSaveEditEmployee" class="btn btn-primary">Update Record</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backups & Restore Modal -->
+<div id="backupsModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:680px">
+    <div class="card-header" style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-subtle);margin-bottom:0">
+      <div class="card-title">CSV Version Snapshots & Backups</div>
+      <button class="btn-icon" data-close-modal>✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <p style="font-size:0.86rem;color:var(--text-secondary);margin-bottom:1rem">
+        Snapshots are created automatically before CSV imports and manual interventions. You can restore any snapshot safely with atomic file replacement.
+      </p>
+      <div class="table-responsive" style="max-height:280px;overflow-y:auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Backup File</th>
+              <th>Created At</th>
+              <th>Size</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="backupsTableBody">
+            <!-- Rendered by employee_mgr.js -->
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:1.25rem">
+        <button class="btn btn-secondary" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/employee_mgr.js"></script>
+{% endblock %}

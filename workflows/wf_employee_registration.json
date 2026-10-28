@@ -1,0 +1,171 @@
+{
+  "id": "wf_employee_registration",
+  "name": "Legacy Employee Registration",
+  "description": "End-to-end automation filling employee credentials, detecting Save button via OpenCV, and verifying CSV records.",
+  "steps": [
+    {
+      "id": "s1",
+      "type": "activate_window",
+      "name": "Activate Legacy EMS Window",
+      "params": {
+        "title_pattern": "Legacy Employee Management System"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s2",
+      "type": "wait",
+      "name": "Wait for Window Activation",
+      "params": {
+        "milliseconds": 600
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s3",
+      "type": "type_text",
+      "name": "Type Employee ID",
+      "params": {
+        "text": "{{employee_id}}",
+        "interval": 0.05
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s4",
+      "type": "press_key",
+      "name": "Tab to Name Field",
+      "params": {
+        "key": "tab"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s5",
+      "type": "type_text",
+      "name": "Type Employee Name",
+      "params": {
+        "text": "{{employee_name}}",
+        "interval": 0.05
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s6",
+      "type": "press_key",
+      "name": "Tab to Department Field",
+      "params": {
+        "key": "tab"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s7",
+      "type": "type_text",
+      "name": "Type Department",
+      "params": {
+        "text": "{{department}}",
+        "interval": 0.05
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s8",
+      "type": "screenshot",
+      "name": "Capture Form Screenshot",
+      "params": {
+        "label": "form_filled"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s9",
+      "type": "image_detection",
+      "name": "Detect Save Button via OpenCV",
+      "params": {
+        "template_name": "save_employee.png",
+        "threshold": 0.8,
+        "multi_scale": true
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s10",
+      "type": "request_confirmation",
+      "name": "Explicit User Confirmation Prompt",
+      "params": {
+        "prompt": "Confirm saving employee record to legacy system?"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s11",
+      "type": "click_detected",
+      "name": "Click Save Employee Button",
+      "params": {
+        "offset_x": 0,
+        "offset_y": 0
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s12",
+      "type": "wait",
+      "name": "Wait for Dialog",
+      "params": {
+        "milliseconds": 800
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s13",
+      "type": "press_key",
+      "name": "Dismiss Confirmation Dialog",
+      "params": {
+        "key": "enter"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    },
+    {
+      "id": "s14",
+      "type": "validation",
+      "name": "Verify Record in CSV File",
+      "params": {
+        "target": "csv",
+        "employee_id": "{{employee_id}}"
+      },
+      "timeout_seconds": 10.0,
+      "retry_count": 1,
+      "continue_on_failure": false
+    }
+  ],
+  "version": "2.0",
+  "created_at": "2026-10-28T21:16:56.652084",
+  "updated_at": "2026-10-28T21:16:56.652084"
+}

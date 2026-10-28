@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Template & Workflow Library — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Template & Workflow Library</h1>
+    <p class="page-subtitle">Repository of computer vision template reference images, automation sequences, and reusable schemas.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <label class="btn btn-secondary" style="cursor:pointer;margin-bottom:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Upload Template Image</span>
+      <input type="file" id="uploadTemplateFileInput" accept=".png" style="display:none" onchange="uploadTemplateFile(this)">
+    </label>
+    <a href="/workflow-builder" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Build New Workflow</span>
+    </a>
+  </div>
+</div>
+
+<!-- Saved Vision Templates Section -->
+<div style="margin-bottom:2.5rem">
+  <div style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--text-primary);display:flex;align-items:center;gap:0.5rem">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+    Computer Vision Image Templates ({{ templates|length }})
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:1.25rem">
+    {% for t in templates %}
+    <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div style="background:var(--bg-primary);border-radius:var(--radius-md);height:140px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--border-subtle);margin-bottom:0.75rem;padding:0.5rem">
+          <img src="/api/images/templates/{{ t.name }}" alt="{{ t.name }}" style="max-width:100%;max-height:100%;object-fit:contain">
+        </div>
+        <div style="font-weight:600;font-size:0.92rem;color:var(--text-primary);margin-bottom:0.25rem">{{ t.name }}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);display:flex;gap:0.75rem">
+          <span>{{ t.width }}x{{ t.height }} px</span>
+          <span>{{ (t.size_bytes / 1024)|round(1) }} KB</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle)">
+        <span style="font-size:0.72rem;color:var(--text-muted)">{{ t.modified_at[:10] }}</span>
+        <button class="btn btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem" onclick="deleteTemplate('{{ t.name }}')">Delete</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Saved Workflows Section -->
+<div>
+  <div style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--text-primary);display:flex;align-items:center;gap:0.5rem">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="16 18 22 12 16 6"/>
+      <polyline points="8 6 2 12 8 18"/>
+    </svg>
+    Saved Workflows ({{ workflows|length }})
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:1.25rem">
+    {% for w in workflows %}
+    <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+          <div style="font-weight:700;font-size:1rem;color:var(--text-primary)">{{ w.name }}</div>
+          <span class="badge badge-info">{{ w.step_count }} Steps</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.4;margin-bottom:1rem">
+          {{ w.description or "Automated workflow sequence." }}
+        </p>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+        <a href="/workflow-builder?id={{ w.id }}" class="btn btn-secondary" style="flex:1;font-size:0.78rem">Edit</a>
+        <a href="/control-center" class="btn btn-primary" style="flex:1;font-size:0.78rem">Run</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function uploadTemplateFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  App.toast("Uploading template image...", "info");
+  try {
+    const res = await fetch("/api/cv/templates", { method: "POST", body: formData });
+    const data = await res.json();
+    if (data.success) {
+      App.toast("Template uploaded successfully.", "success");
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      App.toast(data.error || "Upload failed.", "danger");
+    }
+  } catch (e) {
+    App.toast(`Upload error: ${e}`, "danger");
+  }
+}
+
+async function deleteTemplate(name) {
+  if (!confirm(`Delete template '${name}'?`)) return;
+  try {
+    const res = await fetch(`/api/cv/templates/${name}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) {
+      App.toast("Template deleted.", "info");
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      App.toast(data.error || "Delete failed.", "danger");
+    }
+  } catch (e) {
+    App.toast(`Delete error: ${e}`, "danger");
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Computer Vision Lab — OmniRPA Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Computer Vision Lab</h1>
+    <p class="page-subtitle">Interactive visual recognition workspace: capture displays, crop templates on canvas, run multi-scale matching, and diagnose low-confidence scenarios.</p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <button id="btnCaptureLiveDesktop" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Capture Live Desktop</span>
+    </button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:1.5rem">
+  <!-- Left Side Controls Panel -->
+  <div style="display:flex;flex-direction:column;gap:1.25rem">
+    <!-- Match Engine Controls -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Matching Controls</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reference Template</label>
+        <select id="cvTemplateSelect" class="form-control">
+          {% for t in templates %}
+          <option value="{{ t.name }}">{{ t.name }} ({{ t.width }}x{{ t.height }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Matching Algorithm</label>
+        <select id="cvMethodSelect" class="form-control">
+          <option value="TM_CCOEFF_NORMED">TM_CCOEFF_NORMED (Normalized Correlation Coefficient - Recommended)</option>
+          <option value="TM_CCORR_NORMED">TM_CCORR_NORMED (Normalized Cross Correlation)</option>
+          <option value="TM_SQDIFF_NORMED">TM_SQDIFF_NORMED (Normalized Squared Difference)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+          <label class="form-label" style="margin-bottom:0">Confidence Threshold</label>
+          <span id="cvThresholdVal" style="font-size:0.85rem;color:var(--accent-cyan);font-weight:600">80%</span>
+        </div>
+        <input type="range" id="cvThresholdSlider" min="0.50" max="0.99" step="0.01" value="0.80" style="width:100%;accent-color:var(--accent-violet)" oninput="document.getElementById('cvThresholdVal').textContent=Math.round(this.value*100)+'%'">
+      </div>
+
+      <div class="form-group" style="display:flex;align-items:center;gap:0.6rem">
+        <input type="checkbox" id="cvMultiScaleCheck" checked style="width:16px;height:16px;accent-color:var(--accent-violet)">
+        <label for="cvMultiScaleCheck" style="font-size:0.85rem;color:var(--text-primary);cursor:pointer">
+          Multi-Scale Matching (0.8x - 1.25x)
+        </label>
+      </div>
+
+      <button id="btnRunDetection" class="btn btn-primary" style="width:100%;margin-top:0.5rem">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Execute Template Match</span>
+      </button>
+    </div>
+
+    <!-- Interactive Canvas Cropper Panel -->
+    <div class="card" id="cropControlsPanel" style="display:none;background:var(--bg-surface-elevated)">
+      <div style="font-weight:600;font-size:0.9rem;color:var(--accent-violet);margin-bottom:0.4rem">
+        Crop Selected Region
+      </div>
+      <div id="cropCoordsBadge" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem"></div>
+      <div class="form-group">
+        <label class="form-label">New Template Name</label>
+        <input type="text" id="newTemplateNameInput" class="form-control" placeholder="e.g. clear_fields.png">
+      </div>
+      <button id="btnSaveCroppedTemplate" class="btn btn-secondary" style="width:100%;font-size:0.85rem">
+        Save as Template Image
+      </button>
+    </div>
+
+    <!-- Detection Result Card -->
+    <div id="detectionResultsPanel" class="card" style="display:none">
+      <div class="card-header">
+        <div class="card-title">Detection Result</div>
+        <span id="matchConfidenceBadge" class="badge badge-success">95.7% Confidence</span>
+      </div>
+      <div id="matchLocationLabel" style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem"></div>
+      <div style="font-size:0.8rem;color:var(--text-muted)">
+        <div style="font-weight:600;margin-bottom:0.25rem">Diagnostic Notes:</div>
+        <ul id="diagnosticsList" style="padding-left:1.15rem;display:flex;flex-direction:column;gap:0.25rem"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side Interactive Canvas -->
+  <div class="card" style="display:flex;flex-direction:column">
+    <div class="card-header">
+      <div class="card-title">Interactive Vision Canvas</div>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        <span id="imgDimensionsBadge" class="badge badge-info">No Screenshot Loaded</span>
+      </div>
+    </div>
+
+    <div style="flex:1;background:var(--bg-primary);border-radius:var(--radius-md);border:1px solid var(--border-subtle);position:relative;overflow:auto;min-height:480px;display:flex;align-items:center;justify-content:center">
+      <div id="canvasPlaceholder" style="text-align:center;color:var(--text-muted);padding:2rem">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:0.75rem">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <div>Click <strong>"Capture Live Desktop"</strong> to grab the current display into this canvas.</div>
+        <div style="font-size:0.8rem;margin-top:0.4rem">You can drag a rectangular box directly on the screenshot to crop new templates.</div>
+      </div>
+      <canvas id="cvCanvas" style="display:none;cursor:crosshair;max-width:100%"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/cv_lab.js"></script>
+{% endblock %}
